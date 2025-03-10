@@ -4,7 +4,7 @@ const API_URL = "/api";
 
 export default function Formulario () {
 
-    // const [data, setData] = useState("");
+    const [data, setData] = useState("");
     const [exchangeRate, setExchangeRate] = useState("");
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
@@ -15,42 +15,21 @@ export default function Formulario () {
 
     const getYesterdayDate = () => {
         const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        
-        const year = yesterday.getFullYear();
-        const month = String(yesterday.getMonth() + 1).padStart(2, "0");
-        const day = String(yesterday.getDate()).padStart(2, "0");
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  const year = yesterday.getFullYear();
+  const month = String(yesterday.getMonth() + 1).padStart(2, "0");
+  const day = String(yesterday.getDate()).padStart(2, "0");
 
-        return `${year}${month}${day}`;
-      }
+  return `${year}${month}${day}`;
+    }
     
-    // useEffect(() => {
-    //     fetch('http://127.0.0.1:8000/tipodecambio_actual')
-    //     .then((response) => response.json())
-    //     .then((response) => setData(response))
-    //     .catch(err => console.error(err))
-    // },[]);
-
-    useEffect(()=>{
-      const fetchExchangeRate = async () => {
-        try {
-          const response = await fetch("http://127.0.0.1:8000/tipodecambio_actual",{
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          });
-          if (!response.ok) {
-            throw new Error("Error al obtener el tipo de cambio");
-          }
-          const data = await response.json();
-          setExchangeRate(data.tipo_de_cambio);
-        }catch (error) {
-          console.error("Error obteniendo el tipo de cambio:", error.message);
-        }
-      };
-      fetchExchangeRate();
-    }, []);
+    useEffect(() => {
+        fetch('http://127.0.0.1:8000/tipodecambio_actual')
+        .then((response) => response.json())
+        .then((response) => setData(response))
+        .catch(err => console.error(err))
+    },[]);
 
     useEffect(() => {
 
@@ -133,9 +112,9 @@ export default function Formulario () {
                         <h2 className="text-xl font-bold mb-4">Actualizar Tipo de Cambio</h2>
                         <input type="text" 
                         placeholder="Ingrese el tipo de cambio"
-                        value={exchangeRate || ""}
+                        value={exchangeRate}
                         onChange={(e) => setExchangeRate(e.target.value)}
-                        className="mb-4 text-black" />
+                        className="mb-4" />
                     </div>
 
                     <div>
@@ -143,7 +122,7 @@ export default function Formulario () {
                         placeholder="Ingresa fecha"
                         value={getYesterdayDate()}
                         onChange={(e) => setExchangeRate(e.target.value)}
-                        className="mb-4 text-black" />
+                        className="mb-4" />
                     </div>
                     
                     <div>
@@ -161,4 +140,5 @@ export default function Formulario () {
             </div>
         </>
       );
+
 }
