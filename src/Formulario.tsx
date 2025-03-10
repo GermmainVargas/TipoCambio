@@ -43,7 +43,7 @@ export default function Formulario () {
                     body: JSON.stringify({ CompanyDB:'SBO_Pruebas', UserName:'erp', Password:'Wiin2012' }),
                 });
 
-                if(!response.ok) throw new Error("Error en inicio de sesión");
+                if(!response.ok) throw new Error("Error en el inicio de sesión");
 
                 const data = await response.json();
                 setToken(data.SessionId);
