@@ -49,7 +49,7 @@ export default function Formulario () {
                 setToken(data.SessionId);
                 localStorage.setItem("session", JSON.stringify(data.SessionId));
             } catch(error){
-                console.error("Error de inicio de sesión automático:", error.message);
+                console.error("Error de inicio de sesión en automático:", error.message);
                 setMessage("Error en inicio de sesión. Verifique las credenciales o la conexión con SAP.");
             }
         };
