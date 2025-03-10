@@ -4,7 +4,7 @@ const API_URL = "/api";
 
 export default function Formulario () {
 
-    const [data, setData] = useState("");
+    // const [data, setData] = useState("");
     const [exchangeRate, setExchangeRate] = useState("");
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
@@ -24,12 +24,33 @@ export default function Formulario () {
         return `${year}${month}${day}`;
       }
     
-    useEffect(() => {
-        fetch('http://127.0.0.1:8000/tipodecambio_actual')
-        .then((response) => response.json())
-        .then((response) => setData(response))
-        .catch(err => console.error(err))
-    },[]);
+    // useEffect(() => {
+    //     fetch('http://127.0.0.1:8000/tipodecambio_actual')
+    //     .then((response) => response.json())
+    //     .then((response) => setData(response))
+    //     .catch(err => console.error(err))
+    // },[]);
+
+    useEffect(()=>{
+      const fetchExchangeRate = async () => {
+        try {
+          const response = await fetch("http://127.0.0.1:8000/tipodecambio_actual",{
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+          if (!response.ok) {
+            throw new Error("Error al obtener el tipo de cambio");
+          }
+          const data = await response.json();
+          setExchangeRate(data.tipo_de_cambio);
+        }catch (error) {
+          console.error("Error obteniendo el tipo de cambio:", error.message);
+        }
+      };
+      fetchExchangeRate();
+    }, []);
 
     useEffect(() => {
 
@@ -112,7 +133,7 @@ export default function Formulario () {
                         <h2 className="text-xl font-bold mb-4">Actualizar Tipo de Cambio</h2>
                         <input type="text" 
                         placeholder="Ingrese el tipo de cambio"
-                        value={exchangeRate}
+                        value={exchangeRate || ""}
                         onChange={(e) => setExchangeRate(e.target.value)}
                         className="mb-4 text-black" />
                     </div>
@@ -140,5 +161,4 @@ export default function Formulario () {
             </div>
         </>
       );
-
 }
