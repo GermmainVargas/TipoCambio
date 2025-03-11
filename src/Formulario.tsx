@@ -1,10 +1,13 @@
 import {  useEffect, useState } from "react";
 
 const API_URL = "/api";
+const URL = "/alianza";
 
 export default function Formulario () {
 
     const [exchangeRate, setExchangeRate] = useState("");
+    const [exchangeRateEUR, setExchangeRateEUR] = useState("");
+
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
     const [token, setToken] = useState(()=>{
@@ -12,17 +15,47 @@ export default function Formulario () {
         return savedToken ? JSON.parse(savedToken) : null;
     });
 
+  // OBTENER FECHA DE DE AYER
     const getYesterdayDate = () => {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        
-        const year = yesterday.getFullYear();
-        const month = String(yesterday.getMonth() + 1).padStart(2, "0");
-        const day = String(yesterday.getDate()).padStart(2, "0");
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      const year = yesterday.getFullYear();
+      const month = String(yesterday.getMonth() + 1).padStart(2, "0");
+      const day = String(yesterday.getDate()).padStart(2, "0");
 
-        return `${year}${month}${day}`;
+      return `${year}${month}${day}`;
+    }
+
+  // INICIO DE SESION Y OBTENCION DE TOKEN
+    useEffect(() => {
+    const autoLogin = async () => {
+        try {
+            const response = await fetch(`${API_URL}/Login`,{
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ CompanyDB:'SBO_Pruebas', UserName:'erp', Password:'Wiin2012' }),
+            });
+
+            if(!response.ok) throw new Error("Error en inicio de sesión");
+
+            const data = await response.json();
+            setToken(data.SessionId);
+            localStorage.setItem("session", JSON.stringify(data.SessionId));
+        } catch(error){
+            console.error("Error de inicio de sesión automático:", error.message);
+            setMessage("Error en inicio de sesión. Verifique las credenciales o la conexión con SAP.");
+        }
+      };
+
+      if(!token) {
+      autoLogin();
       }
+    }, [token]);
 
+  // OBTENER TIPO DE CAMBIO EN USD
     useEffect(()=>{
       const fetchExchangeRate = async () => {
         try {
@@ -44,34 +77,27 @@ export default function Formulario () {
       fetchExchangeRate();
     }, []);
 
-    useEffect(() => {
-
-        const autoLogin = async () => {
-            try {
-                const response = await fetch(`${API_URL}/Login`,{
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({ CompanyDB:'SBO_Pruebas', UserName:'erp', Password:'Wiin2012' }),
-                });
-
-                if(!response.ok) throw new Error("Error en inicio de sesión");
-
-                const data = await response.json();
-                setToken(data.SessionId);
-                localStorage.setItem("session", JSON.stringify(data.SessionId));
-            } catch(error){
-                console.error("Error de inicio de sesión automático:", error.message);
-                setMessage("Error en inicio de sesión. Verifique las credenciales o la conexión con SAP.");
-            }
-        };
-
-        if(!token) {
-        autoLogin();
+  // OBTENER TIPO DE CAMBIO EN EUR
+    useEffect(()=>{
+      const fetchExchangeRateEUR = async () => {
+        try {
+          const response = await fetch(`${URL}/tipodecambio_euro`,{
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+          if (!response.ok) {
+            throw new Error("Error al obtener el tipo de cambio");
+          }
+          const data = await response.json();
+          setExchangeRateEUR(data.tipo_de_cambio);
+        }catch (error) {
+          console.error("Error obteniendo el tipo de cambio:", error.message);
         }
-    }, [token]);
-    
+      };
+      fetchExchangeRateEUR();
+    }, []);
 
     const handleSetExchangeRate = async () => {
         if (!token) {
@@ -82,59 +108,115 @@ export default function Formulario () {
         setLoading(true);
         setMessage("");
 
+        const exchangeRates = [
+          { Currency: "USD", Rate: parseFloat(exchangeRate) },
+          { Currency: "EUR", Rate: parseFloat(exchangeRateEUR) },
+        ];
+
         const yesterdayDate = getYesterdayDate();
         
         try {
-          const response = await fetch(`${API_URL}/SBOBobService_SetCurrencyRate`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization":`${token}`,
+          for (const { Currency, Rate } of exchangeRates) {
+            let response = await fetch(`${API_URL}/SBOBobService_SetCurrencyRate`, {
+              method: "POST",
+              headers: {
+                    "Content-Type": "application/json",
+                    "Authorization":`${token}`,
+      
+                  },
+                  body: JSON.stringify({
+                        Currency,
+                        Rate,
+                        RateDate: yesterdayDate,
+                      }),
+            });
 
-            },
-            body: JSON.stringify({
-              Currency: "USD",
-              Rate: parseFloat(exchangeRate),
-              RateDate: yesterdayDate,
-            }),
-          });
-          
-          if (!response.ok){
-            if (response.status === 401) {
-                localStorage.removeItem("session");
-                setToken(null);
-                throw new Error("Sesión expirada. Intentando iniciar sesión nuevamente...");
+            if(response.status === 401) {
+              try {
+                console.warn("Token expirado, intentando reautenticación...");
+
+                const loginResponse = await fetch(`${API_URL}/Login`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ CompanyDB: "SBO_Pruebas", UserName: "erp", Password: "Wiin2012" }),
+                });
+
+                if (!loginResponse.ok) throw new Error("Error al reautenticar");
+
+                const loginData = await loginResponse.json();
+                localStorage.setItem("session", JSON.stringify(loginData.SessionId));
+                setToken(loginData.SessionId); // Actualizar el token
+
+                console.log("Reautenticación exitosa, reintentando actualización de tipo de cambio...");
+
+                // Intentar nuevamente con el nuevo token
+                response = await fetch(`${API_URL}/SBOBobService_SetCurrencyRate`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `${token}`,
+                  },
+                  body: JSON.stringify({
+                    Currency,
+                    Rate,
+                    date: yesterdayDate,
+                  }),
+                });
+                if (!response.ok) throw new Error(`Error al actualizar ${Currency} después de reautenticación`);
+                } catch (loginError) {
+                  console.error("Error en el intento de reautenticación:", loginError.message);
+                  setMessage("Error en la reautenticación. Inicie sesión nuevamente.");
+                  return;
+                }
               }
-              throw new Error("Error al actualizar el tipo de cambio");
-          }           
-          setMessage("Tipo de cambio actualizado exitosamente");
-        } catch (error) {
-          setMessage(error.message);
-        } finally {
+              if (!response.ok) throw new Error(`Error al actualizar el tipo de cambio para ${Currency}`);
+
+              console.log(`Tipo de cambio para ${Currency} actualizado exitosamente`);
+            }
+            setMessage("Tipo de cambio para USD y EUR actualizado exitosamente");
+          }
+          catch (error) {
+            console.error("Error en la actualización del tipo de cambio:", error.message);
+            setMessage(error.message);
+        }finally {
           setLoading(false);
-        }
-      };
+        }      
+      };    
 
       return (
         <>
             <div className="flex flex-col items-center mt-10">
             {token ? (
                 <div>
-                    <div>
-                        <h2 className="text-xl font-bold mb-4">Actualizar Tipo de Cambio</h2>
-                        <input type="text" 
-                        placeholder="Ingrese el tipo de cambio"
-                        value={exchangeRate || ""}
-                        onChange={(e) => setExchangeRate(e.target.value)}
-                        className="mb-4 text-black" />
-                    </div>
+                  <h2 className="text-xl font-bold mb-4">Actualizar Tipo de Cambio</h2>
+                    <div className="columns-2">   
+                        <div> 
+                          <span><p>DOLARES</p></span>
+                          <input type="text" 
+                          placeholder="Ingrese el tipo de cambio"
+                          value={exchangeRate || ""}
+                          onChange={(e) => setExchangeRate(e.target.value)}
+                          className="mb-4 text-black" />
+                        </div>
 
-                    <div>
-                        <input type="text" 
-                        placeholder="Ingresa fecha"
-                        value={getYesterdayDate()}
-                        onChange={(e) => setExchangeRate(e.target.value)}
-                        className="mb-4 text-black" />
+                        <div>
+                          <span><p>EUROS</p></span>
+                          <input type="text" 
+                          placeholder="Ingrese el tipo de cambio"
+                          value={exchangeRateEUR || ""}
+                          onChange={(e) => setExchangeRateEUR(e.target.value)}
+                          className="mb-4 text-black" />
+                        </div>
+                    </div>
+                    <div className="columns-1 flex justify-center">
+                        <div> 
+                          <span><p>FECHA</p></span>
+                          <input type="text" 
+                          placeholder="Ingresa fecha"
+                          value={getYesterdayDate()}
+                          onChange={(e) => setExchangeRate(e.target.value)}
+                          className="mb-4 text-black" />
+                        </div>
                     </div>
                     
                     <div>
