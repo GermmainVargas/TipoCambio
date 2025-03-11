@@ -59,7 +59,7 @@ export default function Formulario () {
     useEffect(()=>{
       const fetchExchangeRate = async () => {
         try {
-          const response = await fetch("http://127.0.0.1:8000/tipodecambio_actual",{
+          const response = await fetch(`${URL}/tipodecambio_actual`,{
             method: "GET",
             headers: {
               "Content-Type": "application/json",
