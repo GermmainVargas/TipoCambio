@@ -1,5 +1,5 @@
-import Formulario from "./Formulario"
-// import Viaticos from "./components/Viaticos"
+// import Formulario from "./Formulario"
+import Viaticos from "./components/Viaticos"
 
 function App() {
 
@@ -7,8 +7,8 @@ function App() {
     <>
       <div>
         <div>
-        <Formulario/>
-        {/* <Viaticos/> */}
+        {/* <Formulario/> */}
+        <Viaticos/>
       </div>
     </div>
     </>
